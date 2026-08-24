@@ -23,7 +23,7 @@ module.exports = new EntitySchema({
     },
     password: {
       type: "varchar",
-      length: 50,
+      length: 255,
       nullable: false,
     },
     role: {
@@ -40,12 +40,7 @@ module.exports = new EntitySchema({
     updatedAt: {
       type: "timestamp",
       updateDate: true,
-      nullable: true,
-    },
-    deleteAt: {
-      type: "timestamp",
-      deleteDate: true,
-      nullable: true,
-    },
+      nullable: false,
+    }
   },
 });

@@ -5,6 +5,7 @@ const { errorHandler } = require("./utils/errorHandler");
 
 const skillRoute = require("./routes/skill");
 const creditRoute = require("./routes/credit-package");
+const userRoute = require("./routes/user");
 
 const app = express();
 
@@ -15,9 +16,21 @@ app.use(express.json());
 app.get("/healthcheck", (_, response) => response.status(200).send("OK!"));
 
 // 路由掛載（後續步驟逐一加入）
-
 app.use("/api/coaches/skill", skillRoute);
 app.use("/api/credit-package", creditRoute);
+app.use("/api/users", userRoute);
+
+
+/*
+確認資料表格式
+把 delete 刪掉
+*/
+
+
+
+
+
+
 
 // 404 錯誤
 app.use((_, __, next) => next(errorHandler(404, "找不到無此路由 !!!")));

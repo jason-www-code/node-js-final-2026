@@ -30,16 +30,6 @@ module.exports = new EntitySchema({
       type: "timestamp",
       createDate: true,
       nullable: false,
-    },
-    updatedAt: {
-      type: "timestamp",
-      updateDate: true,
-      nullable: true,
-    },
-    deleteAt: {
-      type: "timestamp",
-      createDate: true,
-      nullable: true,
-    },
+    }
   },
 });
