@@ -21,11 +21,6 @@ app.use("/api/credit-package", creditRoute);
 app.use("/api/users", userRoute);
 
 
-/*
-確認資料表格式
-把 delete 刪掉
-*/
-
 
 
 

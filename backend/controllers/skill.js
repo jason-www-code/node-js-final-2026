@@ -28,7 +28,6 @@ async function postSkill(request, response, next) {
     name: name.trim(),
   });
 
-  console.log(newSkill);
   return response.status(200).json({
     status: "success",
     data: newSkill,
