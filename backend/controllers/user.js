@@ -28,7 +28,7 @@ async function signup(request, response, next) {
 
   if (existUser) return next(errorHandler(409, "Email 已被使用"));
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = await bcrypt.hash(password.trim(), 10);
 
   // role 欄位因為在資料表預設是 "USER" ，所以不寫
   const newUser = await userRepository.save({
@@ -120,7 +120,7 @@ async function putProfile(request, response, next) {
     const result = await userRepository.update(
       request.user.id, // 自動對應到  WHERE id
       {
-        name, // 要更新的欄位
+        name: name.trim(), // 要更新的欄位
       },
     );
 
@@ -169,7 +169,7 @@ async function putPassword(request, response, next) {
 
   if (!isMatch) return next(errorHandler(400, "密碼輸入錯誤"));
 
-  const hashedPassword = await bcrypt.hash(new_password, 10);
+  const hashedPassword = await bcrypt.hash(new_password.trim(), 10);
 
   await userRepository.update(request.user.id, {
     password: hashedPassword,

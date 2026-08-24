@@ -6,6 +6,7 @@ const { errorHandler } = require("./utils/errorHandler");
 const skillRoute = require("./routes/skill");
 const creditRoute = require("./routes/credit-package");
 const userRoute = require("./routes/user");
+const coachRoute = require("./routes/admin/coach");
 
 const app = express();
 
@@ -19,13 +20,7 @@ app.get("/healthcheck", (_, response) => response.status(200).send("OK!"));
 app.use("/api/coaches/skill", skillRoute);
 app.use("/api/credit-package", creditRoute);
 app.use("/api/users", userRoute);
-
-
-
-
-
-
-
+app.use("/api/admin/coaches", coachRoute);
 
 // 404 錯誤
 app.use((_, __, next) => next(errorHandler(404, "找不到無此路由 !!!")));
