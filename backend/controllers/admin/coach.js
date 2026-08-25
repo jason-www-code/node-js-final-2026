@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const dayjs = require("dayjs");
 
 const { dataSource } = require("../../db/data-source");
 const { errorHandler } = require("../../utils/errorHandler");
@@ -9,9 +10,13 @@ const {
   isInteger,
 } = require("../../utils/validUtils");
 const { getEnv } = require("../../config");
+const { In } = require("typeorm");
 
 const userRepository = dataSource.getRepository("Users");
 const coachRepository = dataSource.getRepository("Coach");
+const coachLinkSkillRepository = dataSource.getRepository("CoachLinkSkill");
+const skillRepository = dataSource.getRepository("Skills");
+const courseRepository = dataSource.getRepository("Course");
 
 async function upgradeToCoach(request, response, next) {
   const { userId } = request.params;
@@ -36,8 +41,13 @@ async function upgradeToCoach(request, response, next) {
 
   if (!existUser) return next(errorHandler(400, "使用者不存在"));
 
-  if (existUser.role === "COACH")
-    return next(errorHandler(409, "使用者已經是教練"));
+  const existCoach = await coachRepository.findOneBy({
+    user_id: userId,
+  });
+
+  console.log("existCoach", existCoach);
+
+  if (existCoach) return next(errorHandler(409, "使用者已經是教練"));
 
   const updateCoach = await coachRepository.save({
     experience_years,
@@ -52,7 +62,7 @@ async function upgradeToCoach(request, response, next) {
       role: "COACH",
     },
     {
-      returning: ["role", "user_id"], // 直接取得更新後的 role 欄位，不需要再 findOneBy()
+      returning: ["role"], // 直接取得更新後的 role 欄位，不需要再 findOneBy()
     },
   );
 
@@ -73,7 +83,7 @@ async function upgradeToCoach(request, response, next) {
 }
 
 async function getCoach(request, response, next) {
-  console.log(request.user);
+  console.log("getCoach", request.user);
 
   const coach = await coachRepository.findOne({
     select: {
@@ -89,60 +99,331 @@ async function getCoach(request, response, next) {
 
   console.log("coach", coach);
 
+  //找出跟教練綁定的技能
+  const coachBindingSkills = (
+    await coachLinkSkillRepository.find({
+      select: {
+        skill_id: true,
+      },
+      where: {
+        coach_id: coach.id,
+      },
+    })
+  ).map((item) => item.skill_id);
+
+  console.log("coachBindingSkills", coachBindingSkills);
+
   return response.status(200).json({
     status: "success",
     data: {
       ...coach,
 
       // sklii_link_coach
-      skill_ids: [
-        "7e2f9a4b-1c8d-4f6e-b3a5-9d7c2e4f8a1b",
-        "3c6e1f8a-5b2d-4a9c-8e7f-1b4d6a9c3e5f",
-      ],
+      skill_ids: coachBindingSkills,
     },
   });
 }
 async function putCoach(request, response, next) {
+  const { experience_years, description, profile_image_url, skill_ids } =
+    request.body;
+
+  // 檢查每一個 skill_ids 在 skills 資料表是否存在
+  const existSkills = await skillRepository.find({
+    where: {
+      id: In(skill_ids),
+    },
+  });
+
+  if (
+    !isInteger(experience_years) ||
+    experience_years < 0 ||
+    !isValidString(description) ||
+    !isValidString(profile_image_url) ||
+    !profile_image_url.startsWith("https") ||
+    !skill_ids ||
+    !Array.isArray(skill_ids) ||
+    skill_ids.length === 0 ||
+    existSkills.length !== skill_ids.length
+  )
+    return next(errorHandler(400, "欄位未填寫正確"));
+
+  console.log("existSkills", existSkills);
+  if (existSkills.length !== skill_ids.length)
+    console.log("putCoach", request.user);
+  console.log(
+    "putCoach",
+    experience_years,
+    description,
+    profile_image_url,
+    skill_ids,
+  );
+
+  // 用  request.user 去 COACH 表找出 Coach.id  ( 此時 role = 'COACH' )
+
+  const { id } = await coachRepository.findOneBy({
+    user_id: request.user.id,
+  });
+  console.log(id);
+
+  // update COACH 表的時候傳入 id 去改 experience_years description profile_image_url
+
+  const updateResult = await coachRepository.update(
+    id,
+    {
+      experience_years,
+      description,
+      profile_image_url,
+    },
+    {
+      returning: ["id", "experience_years", "description", "profile_image_url"],
+    },
+  );
+  console.log("updateResult", updateResult.raw[0]);
+
+  await coachLinkSkillRepository.delete({ coach_id: id });
+
+  // 用 Coach.id save 多筆 skill_ids
+
+  const obj = skill_ids.map((skilId) => ({ skill_id: skilId, coach_id: id }));
+
+  const saveSkills = (await coachLinkSkillRepository.save(obj)).map(
+    (item) => item.skill_id,
+  );
+
+  console.log("saveSkills", saveSkills);
   return response.status(200).json({
     status: "success",
     data: {
-      text: true,
+      ...updateResult.raw[0],
+      skill_ids: saveSkills,
     },
   });
 }
 
 async function getCourses(request, response, next) {
+  console.log("getCourses", request.user);
+
+  const courses = (
+    await courseRepository.find({
+      select: {
+        id: true,
+        name: true,
+        start_at: true,
+        end_at: true,
+        max_participants: true,
+        meeting_url: true,
+      },
+      where: {
+        user_id: request.user.id,
+      },
+    })
+  ).map((course) => {
+    // 計算時間 status
+    const now = dayjs();
+    console.log("now", now);
+
+    const status = now.isBefore(course.start_at)
+      ? "尚未開始"
+      : now.isAfter(course.end_at)
+        ? "已結束"
+        : "進行中";
+
+    // participants 課程「未取消」的報名數——已取消的報名不計
+    const participants = 0;
+
+    return {
+      ...course,
+      status,
+      participants,
+    };
+  });
+
+  console.log("courses", courses);
   return response.status(200).json({
     status: "success",
-    data: {
-      text: true,
-    },
+    data: courses,
   });
 }
 
 async function postCourse(request, response, next) {
+  const {
+    skill_id,
+    name,
+    description,
+    start_at,
+    end_at,
+    max_participants,
+    meeting_url,
+  } = request.body;
+
+  console.log("ww", request.user.id);
+
+  if (
+    !isValidString(skill_id) ||
+    !isValidString(name) ||
+    !isValidString(description) ||
+    !isValidString(start_at) ||
+    !isValidString(end_at) ||
+    !isValidString(meeting_url) ||
+    !isInteger(max_participants) ||
+    max_participants < 0 ||
+    !meeting_url.startsWith("https")
+  )
+    return next(errorHandler(400, "欄位未填寫正確"));
+
+  const newCourse = await courseRepository.save({
+    user_id: request.user.id,
+    skill_id,
+    name,
+    description,
+    start_at,
+    end_at,
+    max_participants,
+    meeting_url,
+  });
+
+  console.log("newCourse", newCourse);
+
   return response.status(201).json({
     status: "success",
     data: {
-      text: true,
+      course: newCourse,
     },
   });
 }
 
 async function getCourseInfo(request, response, next) {
+  const { courseId } = request.params;
+
+  console.log("getCourseInfo", request.user);
+
+  console.log(courseId);
+
+  const existCourse = await courseRepository.findOne({
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      start_at: true,
+      end_at: true,
+      max_participants: true,
+      skill_id: true,
+      meeting_url: true,
+    },
+    where: {
+      id: courseId,
+      user_id: request.user.id,
+    },
+  });
+
+  if (!existCourse) return next(errorHandler(400, "課程不存在"));
+
+  const { name: skill_name } = await skillRepository.findOne({
+    select: {
+      name: true,
+    },
+    where: {
+      id: existCourse.skill_id,
+    },
+  });
+
+  console.log("existCourse", existCourse, skill_name);
+
   return response.status(200).json({
     status: "success",
     data: {
-      text: true,
+      ...existCourse,
+      skill_name,
     },
   });
 }
 
 async function putCourseInfo(request, response, next) {
+  const { courseId } = request.params;
+  const {
+    skill_id,
+    name,
+    description,
+    start_at,
+    end_at,
+    max_participants,
+    meeting_url,
+  } = request.body;
+
+  console.log("putCourseInfo", request.user);
+
+  console.log(courseId);
+
+  console.log("ww", request.user.id);
+
+  if (
+    !isValidString(skill_id) ||
+    !isValidString(name) ||
+    !isValidString(description) ||
+    !isValidString(start_at) ||
+    !isValidString(end_at) ||
+    !isValidString(meeting_url) ||
+    !isInteger(max_participants) ||
+    max_participants < 0 ||
+    !meeting_url.startsWith("https")
+  )
+    return next(errorHandler(400, "欄位未填寫正確"));
+
+  const existCourse = await courseRepository.findOne({
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      start_at: true,
+      end_at: true,
+      max_participants: true,
+      skill_id: true,
+      meeting_url: true,
+    },
+    where: {
+      id: courseId,
+      user_id: request.user.id,
+    },
+  });
+
+  console.log("existCourse", existCourse);
+
+  if (!existCourse) return next(errorHandler(400, "課程不存在"));
+
+  const updateCourse = await courseRepository.update(
+    courseId,
+    {
+      skill_id,
+      name,
+      description,
+      start_at,
+      end_at,
+      max_participants,
+      meeting_url,
+    },
+    {
+      returning: [
+        "id",
+        "user_id",
+        "skill_id",
+        "name",
+        "description",
+        "start_at",
+        "end_at",
+        "max_participants",
+        "meeting_url",
+        "created_at",
+        "updated_at",
+      ],
+    },
+  );
+
+  console.log("updateCourse", updateCourse);
+
   return response.status(200).json({
     status: "success",
     data: {
-      text: true,
+      course: updateCourse.raw[0],
     },
   });
 }

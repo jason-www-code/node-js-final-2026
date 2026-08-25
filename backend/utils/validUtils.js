@@ -1,6 +1,7 @@
 // utils/validUtils.js — 驗證工具函式
 const isValidString = (value) =>
   typeof value === "string" && value.trim() !== "";
+
 const isInteger = (value) =>
   typeof value === "number" && Number.isInteger(value);
 const isValidPassword = (value) =>

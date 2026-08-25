@@ -22,6 +22,8 @@ app.use("/api/credit-package", creditRoute);
 app.use("/api/users", userRoute);
 app.use("/api/admin/coaches", coachRoute);
 
+// 最後記得回去改 coachRoute > getCourses  的  participants 欄位，要扣掉 已取消的報名
+
 // 404 錯誤
 app.use((_, __, next) => next(errorHandler(404, "找不到無此路由 !!!")));
 
