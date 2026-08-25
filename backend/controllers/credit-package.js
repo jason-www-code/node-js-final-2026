@@ -16,7 +16,13 @@ async function getCreditPackages(request, response, next) {
 async function postCreditPackage(request, response, next) {
   const { name, credit_amount, price } = request.body;
 
-  if (!isValidString(name) || !isInteger(credit_amount) || !isInteger(price))
+  if (
+    !isValidString(name) ||
+    !isInteger(credit_amount) ||
+    !isInteger(price) ||
+    credit_amount < 0 ||
+    price < 0
+  )
     return next(errorHandler(400, "欄位未填寫正確"));
 
   const existPackage = await creditPackageRepository.findOneBy({

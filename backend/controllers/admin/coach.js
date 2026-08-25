@@ -20,6 +20,7 @@ async function upgradeToCoach(request, response, next) {
   if (
     !isValidString(userId) ||
     !isInteger(experience_years) ||
+    experience_years < 0 ||
     !isValidString(description) ||
     // profile_image_url 是選填欄位，只在有值的時候檢查
     // 沒有值 ( undefined ) 的時候不檢查
@@ -43,7 +44,6 @@ async function upgradeToCoach(request, response, next) {
     description,
     profile_image_url,
     user_id: userId,
-
   });
 
   const updateUser = await userRepository.update(
@@ -73,10 +73,32 @@ async function upgradeToCoach(request, response, next) {
 }
 
 async function getCoach(request, response, next) {
+  console.log(request.user);
+
+  const coach = await coachRepository.findOne({
+    select: {
+      id: true,
+      experience_years: true,
+      description: true,
+      profile_image_url: true,
+    },
+    where: {
+      user_id: request.user.id,
+    },
+  });
+
+  console.log("coach", coach);
+
   return response.status(200).json({
     status: "success",
     data: {
-      text: true,
+      ...coach,
+
+      // sklii_link_coach
+      skill_ids: [
+        "7e2f9a4b-1c8d-4f6e-b3a5-9d7c2e4f8a1b",
+        "3c6e1f8a-5b2d-4a9c-8e7f-1b4d6a9c3e5f",
+      ],
     },
   });
 }
