@@ -7,6 +7,8 @@ const skillRoute = require("./routes/skill");
 const creditRoute = require("./routes/credit-package");
 const userRoute = require("./routes/user");
 const coachRoute = require("./routes/admin/coach");
+const publicCoachRoute = require("./routes/coach");
+const courseRoute = require("./routes/course");
 
 const app = express();
 
@@ -21,6 +23,8 @@ app.use("/api/coaches/skill", skillRoute);
 app.use("/api/credit-package", creditRoute);
 app.use("/api/users", userRoute);
 app.use("/api/admin/coaches", coachRoute);
+app.use("/api/coaches", publicCoachRoute);
+app.use("/api/courses", courseRoute);
 
 // 最後記得回去改 coachRoute > getCourses  的  participants 欄位，要扣掉 已取消的報名
 
