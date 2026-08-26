@@ -1,5 +1,5 @@
-const jwt = require("jsonwebtoken");
 const dayjs = require("dayjs");
+const { MoreThan } = require("typeorm");
 
 const { dataSource } = require("../db/data-source");
 const { errorHandler } = require("../utils/errorHandler");
@@ -8,14 +8,11 @@ const {
   isInteger,
   isValidUUID,
 } = require("../utils/validUtils");
-const { getEnv } = require("../config");
-const { In } = require("typeorm");
 
 const userRepository = dataSource.getRepository("Users");
 const coachRepository = dataSource.getRepository("Coach");
 const coachLinkSkillRepository = dataSource.getRepository("CoachLinkSkill");
-// const skillRepository = dataSource.getRepository("Skills");
-// const courseRepository = dataSource.getRepository("Course");
+const courseRepository = dataSource.getRepository("Course");
 
 async function getCoachList(request, response, next) {
   const { per, page } = request.query;
@@ -83,12 +80,9 @@ async function getCoachInfo(request, response, next) {
   });
 
   if (!existCoach) return next(errorHandler(400, "找不到該教練"));
-  
+
   const user = existCoach.user;
   delete existCoach.user;
-  
-  console.log("existCoach", user, existCoach);
-
 
   // 找出該教練的所有技能
   const skills = (
@@ -119,9 +113,66 @@ async function getCoachInfo(request, response, next) {
   });
 }
 async function getProgressingCourses(request, response, next) {
+  const { coachId } = request.params;
+
+  if (!isValidString(coachId) || !isValidUUID(coachId))
+    return next(errorHandler(400, "欄位未填寫正確"));
+
+  const existCoach = await coachRepository.findOne({
+    where: {
+      id: coachId,
+    },
+  });
+  if (!existCoach) return next(errorHandler(400, "找不到該教練"));
+
+  const now = dayjs();
+
+  const unfinishCourses = (
+    await courseRepository.find({
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        start_at: true,
+        end_at: true,
+        max_participants: true,
+        user: {
+          name: true,
+        },
+        skill: {
+          name: true,
+        },
+      },
+      where: {
+        user_id: existCoach.user_id,
+        end_at: MoreThan(now),
+      },
+      relations: {
+        user: true,
+        skill: true,
+      },
+      order: {
+        start_at: "DESC",
+      },
+    })
+  ).map((item) => {
+    const obj = { ...item };
+    const coach_name = obj.user.name;
+    const skill_name = obj.skill.name;
+
+    delete obj.user;
+    delete obj.skill;
+
+    return {
+      ...obj,
+      coach_name,
+      skill_name,
+    };
+  });
+
   return response.status(200).json({
     status: "success",
-    data: {},
+    data: unfinishCourses,
   });
 }
 

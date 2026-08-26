@@ -1,16 +1,9 @@
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const dayjs = require("dayjs");
+const { In } = require("typeorm");
 
 const { dataSource } = require("../../db/data-source");
 const { errorHandler } = require("../../utils/errorHandler");
-const {
-  isValidString,
-  isValidPassword,
-  isInteger,
-} = require("../../utils/validUtils");
-const { getEnv } = require("../../config");
-const { In } = require("typeorm");
+const { isValidString, isInteger } = require("../../utils/validUtils");
 
 const userRepository = dataSource.getRepository("Users");
 const coachRepository = dataSource.getRepository("Coach");
