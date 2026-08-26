@@ -180,5 +180,32 @@ async function putPassword(request, response, next) {
     data: null,
   });
 }
+const creditPackageRepository = dataSource.getRepository("CreditPackage");
+const purchaseRepository = dataSource.getRepository("CreditPurchase");
+async function getCreditPackage(request, response, next) {
 
-module.exports = { signup, login, getProfile, putProfile, putPassword };
+  const purchaseRecords = await purchaseRepository.find({
+    select: {
+      name: true,
+      purchased_credits: true,
+      price_paid: true,
+      purchase_at: true,
+    },
+    where: { user_id: request.user.id },
+    order: { purchase_at: "DESC" },
+  });
+  console.log("purchaseRecords", purchaseRecords);
+
+  return response
+    .status(200)
+    .json({ status: "success", data: purchaseRecords });
+}
+
+module.exports = {
+  signup,
+  login,
+  getProfile,
+  putProfile,
+  putPassword,
+  getCreditPackage,
+};

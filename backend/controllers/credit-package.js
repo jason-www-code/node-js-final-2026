@@ -1,8 +1,13 @@
 const { dataSource } = require("../db/data-source");
 const { errorHandler } = require("../utils/errorHandler");
-const { isValidString, isInteger } = require("../utils/validUtils");
+const {
+  isValidString,
+  isInteger,
+  isValidUUID,
+} = require("../utils/validUtils");
 
 const creditPackageRepository = dataSource.getRepository("CreditPackage");
+const purchaseRepository = dataSource.getRepository("CreditPurchase");
 async function getCreditPackages(request, response, next) {
   const packages = await creditPackageRepository.find({
     select: { id: true, name: true, credit_amount: true, price: true },
@@ -56,8 +61,39 @@ async function deleteCreditPackage(request, response, next) {
   });
 }
 
+async function purchaseCreditPackage(request, response, next) {
+  const { creditPackageId } = request.params;
+
+  console.log("creditPackageId ", creditPackageId, request.user.id);
+
+  if (!isValidUUID(creditPackageId)) return next(errorHandler(400, "ID錯誤"));
+
+  const existpackage = await creditPackageRepository.findOneBy({
+    id: creditPackageId,
+  });
+
+  console.log(existpackage);
+  if (!existpackage) return next(errorHandler(400, "ID錯誤"));
+
+  const res = await purchaseRepository.save({
+    user_id: request.user.id,
+    credit_package_id: existpackage.id,
+    name: existpackage.name,
+    purchased_credits: existpackage.credit_amount,
+    price_paid: existpackage.price,
+  });
+
+  console.log("res", res);
+
+  return response.status(200).json({
+    status: "success",
+    data: null,
+  });
+}
+
 module.exports = {
   getCreditPackages,
   postCreditPackage,
   deleteCreditPackage,
+  purchaseCreditPackage,
 };

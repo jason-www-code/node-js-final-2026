@@ -7,6 +7,7 @@ const Coach = require("../entities/Coach");
 const CreditPackage = require("../entities/CreditPackage");
 const Course = require("../entities/Course");
 const CoachLinkSkill = require("../entities/CoachLinkSkill");
+const CreditPurchase = require("../entities/CreditPurchase");
 
 const dataSource = new DataSource({
   type: "postgres",
@@ -24,7 +25,8 @@ const dataSource = new DataSource({
     Coach,
     CreditPackage,
     Course,
-    CoachLinkSkill
+    CoachLinkSkill,
+    CreditPurchase
   ],
 });
 
