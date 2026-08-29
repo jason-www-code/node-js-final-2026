@@ -16,8 +16,6 @@ async function isAuth(request, response, next) {
     const token = authorization.split(" ")[1];
     const decodedToken = jwt.verify(token, getEnv("secret.jwtSecret"));
 
-    console.log("decodedToken", decodedToken);
-
     const existUser = await userRepository.findOneBy({
       id: decodedToken.id,
     });
@@ -27,8 +25,6 @@ async function isAuth(request, response, next) {
     request.user = existUser;
     next();
   } catch (error) {
-    console.log("錯誤", error);
-    console.log("錯誤名稱", error.name, error.message);
     if (error.name === "TokenExpiredError")
       return next(errorHandler(401, "Token 已過期"));
 

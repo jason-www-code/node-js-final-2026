@@ -30,15 +30,11 @@ async function upgradeToCoach(request, response, next) {
     id: userId,
   });
 
-  console.log("existUser", existUser);
-
   if (!existUser) return next(errorHandler(400, "使用者不存在"));
 
   const existCoach = await coachRepository.findOneBy({
     user_id: userId,
   });
-
-  console.log("existCoach", existCoach);
 
   if (existCoach) return next(errorHandler(409, "使用者已經是教練"));
 
@@ -61,8 +57,6 @@ async function upgradeToCoach(request, response, next) {
 
   const [{ role }] = updateUser.raw;
 
-  console.log("updateCoach", updateCoach, updateUser);
-
   return response.status(201).json({
     status: "success",
     data: {
@@ -76,8 +70,6 @@ async function upgradeToCoach(request, response, next) {
 }
 
 async function getCoach(request, response, next) {
-  console.log("getCoach", request.user);
-
   const coach = await coachRepository.findOne({
     select: {
       id: true,
@@ -90,8 +82,6 @@ async function getCoach(request, response, next) {
     },
   });
 
-  console.log("coach", coach);
-
   //找出跟教練綁定的技能
   const coachBindingSkills = (
     await coachLinkSkillRepository.find({
@@ -103,8 +93,6 @@ async function getCoach(request, response, next) {
       },
     })
   ).map((item) => item.skill_id);
-
-  console.log("coachBindingSkills", coachBindingSkills);
 
   return response.status(200).json({
     status: "success",
@@ -140,23 +128,11 @@ async function putCoach(request, response, next) {
   )
     return next(errorHandler(400, "欄位未填寫正確"));
 
-  console.log("existSkills", existSkills);
-  if (existSkills.length !== skill_ids.length)
-    console.log("putCoach", request.user);
-  console.log(
-    "putCoach",
-    experience_years,
-    description,
-    profile_image_url,
-    skill_ids,
-  );
-
   // 用  request.user 去 COACH 表找出 Coach.id  ( 此時 role = 'COACH' )
 
   const { id } = await coachRepository.findOneBy({
     user_id: request.user.id,
   });
-  console.log(id);
 
   // update COACH 表的時候傳入 id 去改 experience_years description profile_image_url
 
@@ -171,7 +147,6 @@ async function putCoach(request, response, next) {
       returning: ["id", "experience_years", "description", "profile_image_url"],
     },
   );
-  console.log("updateResult", updateResult.raw[0]);
 
   await coachLinkSkillRepository.delete({ coach_id: id });
 
@@ -183,7 +158,6 @@ async function putCoach(request, response, next) {
     (item) => item.skill_id,
   );
 
-  console.log("saveSkills", saveSkills);
   return response.status(200).json({
     status: "success",
     data: {
@@ -194,8 +168,6 @@ async function putCoach(request, response, next) {
 }
 
 async function getCourses(request, response, next) {
-  console.log("getCourses", request.user);
-
   const courses = (
     await courseRepository.find({
       select: {
@@ -213,7 +185,6 @@ async function getCourses(request, response, next) {
   ).map((course) => {
     // 計算時間 status
     const now = dayjs();
-    console.log("now", now);
 
     const status = now.isBefore(course.start_at)
       ? "尚未開始"
@@ -231,7 +202,6 @@ async function getCourses(request, response, next) {
     };
   });
 
-  console.log("courses", courses);
   return response.status(200).json({
     status: "success",
     data: courses,
@@ -248,8 +218,6 @@ async function postCourse(request, response, next) {
     max_participants,
     meeting_url,
   } = request.body;
-
-  console.log("ww", request.user.id);
 
   if (
     !isValidString(skill_id) ||
@@ -275,8 +243,6 @@ async function postCourse(request, response, next) {
     meeting_url,
   });
 
-  console.log("newCourse", newCourse);
-
   return response.status(201).json({
     status: "success",
     data: {
@@ -287,10 +253,6 @@ async function postCourse(request, response, next) {
 
 async function getCourseInfo(request, response, next) {
   const { courseId } = request.params;
-
-  console.log("getCourseInfo", request.user);
-
-  console.log(courseId);
 
   const existCourse = await courseRepository.findOne({
     select: {
@@ -320,8 +282,6 @@ async function getCourseInfo(request, response, next) {
     },
   });
 
-  console.log("existCourse", existCourse, skill_name);
-
   return response.status(200).json({
     status: "success",
     data: {
@@ -342,12 +302,6 @@ async function putCourseInfo(request, response, next) {
     max_participants,
     meeting_url,
   } = request.body;
-
-  console.log("putCourseInfo", request.user);
-
-  console.log(courseId);
-
-  console.log("ww", request.user.id);
 
   if (
     !isValidString(skill_id) ||
@@ -378,8 +332,6 @@ async function putCourseInfo(request, response, next) {
       user_id: request.user.id,
     },
   });
-
-  console.log("existCourse", existCourse);
 
   if (!existCourse) return next(errorHandler(400, "課程不存在"));
 
@@ -410,8 +362,6 @@ async function putCourseInfo(request, response, next) {
       ],
     },
   );
-
-  console.log("updateCourse", updateCourse);
 
   return response.status(200).json({
     status: "success",

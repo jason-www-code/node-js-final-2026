@@ -90,7 +90,7 @@ jobs:
     name: 壓軸：容器化驗收（W10）
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: docker compose 起你的後端 + 資料庫（backend 服務，壓軸規則）
         run: |

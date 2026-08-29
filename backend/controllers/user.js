@@ -194,7 +194,6 @@ async function getCreditPackage(request, response, next) {
     where: { user_id: request.user.id },
     order: { purchase_at: "DESC" },
   });
-  console.log("purchaseRecords", purchaseRecords);
 
   return response
     .status(200)
