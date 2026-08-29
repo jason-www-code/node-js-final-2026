@@ -9,7 +9,6 @@ const {
   isValidUUID,
 } = require("../utils/validUtils");
 
-const userRepository = dataSource.getRepository("Users");
 const coachRepository = dataSource.getRepository("Coach");
 const coachLinkSkillRepository = dataSource.getRepository("CoachLinkSkill");
 const courseRepository = dataSource.getRepository("Course");

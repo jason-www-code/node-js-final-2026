@@ -7,6 +7,8 @@ const { isValidString, isValidPassword } = require("../utils/validUtils");
 const { getEnv } = require("../config");
 
 const userRepository = dataSource.getRepository("Users");
+const purchaseRepository = dataSource.getRepository("CreditPurchase");
+const bookingRepository = dataSource.getRepository("CourseBooking");
 
 async function signup(request, response, next) {
   const { name, email, password } = request.body;
@@ -180,10 +182,8 @@ async function putPassword(request, response, next) {
     data: null,
   });
 }
-const creditPackageRepository = dataSource.getRepository("CreditPackage");
-const purchaseRepository = dataSource.getRepository("CreditPurchase");
-async function getCreditPackage(request, response, next) {
 
+async function getCreditPackage(request, response, next) {
   const purchaseRecords = await purchaseRepository.find({
     select: {
       name: true,
@@ -200,6 +200,54 @@ async function getCreditPackage(request, response, next) {
     .json({ status: "success", data: purchaseRecords });
 }
 
+async function getCourses(request, response, next) {
+  const { id } = request.user;
+
+  const courseBooking = (
+    await bookingRepository.find({
+      where: {
+        user_id: id,
+      },
+      relations: {
+        course: {
+          user: true,
+        },
+      },
+    })
+  ).map((booking) => ({
+    course_id: booking.course_id,
+    name: booking.course.name,
+    start_at: booking.course.start_at,
+    end_at: booking.course.end_at,
+    meeting_url: booking.course.meeting_url,
+    coach_name: booking.course.user.name,
+    cancelled_at: booking.cancelled_at,
+  }));
+
+  const credits = (
+    await purchaseRepository.find({
+      where: {
+        user_id: id,
+      },
+    })
+  ).reduce((acc, record) => acc + record.purchased_credits, 0);
+
+  const creditUsage = courseBooking.filter(
+    (booking) => booking.cancelled_at === null,
+  ).length;
+
+  const creditRemain = credits - creditUsage;
+
+  return response.status(200).json({
+    status: "success",
+    data: {
+      credit_remain: creditRemain,
+      credit_usage: creditUsage,
+      course_booking: courseBooking,
+    },
+  });
+}
+
 module.exports = {
   signup,
   login,
@@ -207,4 +255,5 @@ module.exports = {
   putProfile,
   putPassword,
   getCreditPackage,
+  getCourses,
 };
