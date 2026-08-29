@@ -9,7 +9,6 @@ const courseRepository = dataSource.getRepository("Course");
 const bookingRepository = dataSource.getRepository("CourseBooking");
 const purchaseRepository = dataSource.getRepository("CreditPurchase");
 
-
 async function getCourses(request, response, next) {
   const now = dayjs();
 
@@ -121,8 +120,6 @@ async function createBooking(request, response, next) {
 }
 
 async function deleteBooking(request, response, next) {
-  console.log('deleteBooking');
-  
   const { courseId } = request.params;
   const { id } = request.user;
 
@@ -141,9 +138,6 @@ async function deleteBooking(request, response, next) {
   await bookingRepository.update(existBooking.id, {
     cancelled_at: now,
   });
-
-
-  console.log(now)
 
   return response.status(201).json({
     status: "success",

@@ -18,11 +18,9 @@ module.exports = new EntitySchema({
     },
     skill: {
       type: "many-to-one",
-      target: "Skills", // ← 對應 Entity 的 name，不是 tableName
-      joinColumn: { name: "skill_id" }, // ← 對應本表的欄位名
+      target: "Skills", 
+      joinColumn: { name: "skill_id" }, 
       onDelete: "CASCADE",
     },
   },
 });
-
-// coach_id, skill_id（各有 relation，onDelete CASCADE）

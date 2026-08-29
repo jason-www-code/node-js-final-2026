@@ -20,7 +20,6 @@ const dataSource = new DataSource({
   synchronize: config.getEnv("db.synchronize"),
   ssl: config.getEnv("db.ssl"),
   entities: [
-    // ... 把 8 個 Entity 都 require 進來
     User,
     Skill,
     Coach,
