@@ -1,5 +1,5 @@
 const dayjs = require("dayjs");
-const { In } = require("typeorm");
+const { In, IsNull } = require("typeorm");
 
 const { dataSource } = require("../../db/data-source");
 const { errorHandler } = require("../../utils/errorHandler");
@@ -10,6 +10,7 @@ const coachRepository = dataSource.getRepository("Coach");
 const coachLinkSkillRepository = dataSource.getRepository("CoachLinkSkill");
 const skillRepository = dataSource.getRepository("Skills");
 const courseRepository = dataSource.getRepository("Course");
+const bookingRepository = dataSource.getRepository("CourseBooking");
 
 async function upgradeToCoach(request, response, next) {
   const { userId } = request.params;
@@ -168,43 +169,49 @@ async function putCoach(request, response, next) {
 }
 
 async function getCourses(request, response, next) {
-  const courses = (
-    await courseRepository.find({
-      select: {
-        id: true,
-        name: true,
-        start_at: true,
-        end_at: true,
-        max_participants: true,
-        meeting_url: true,
-      },
-      where: {
-        user_id: request.user.id,
-      },
-    })
-  ).map((course) => {
-    // 計算時間 status
-    const now = dayjs();
-
-    const status = now.isBefore(course.start_at)
-      ? "尚未開始"
-      : now.isAfter(course.end_at)
-        ? "已結束"
-        : "進行中";
-
-    // participants 課程「未取消」的報名數——已取消的報名不計
-    const participants = 0;
-
-    return {
-      ...course,
-      status,
-      participants,
-    };
+  const courses = await courseRepository.find({
+    select: {
+      id: true,
+      name: true,
+      start_at: true,
+      end_at: true,
+      max_participants: true,
+      meeting_url: true,
+    },
+    where: {
+      user_id: request.user.id,
+    },
   });
+
+  // 每筆資料逐一計算該課程「時間狀態」和「未取消」的報名數
+  const coursesWithParticipants = await Promise.all(
+    courses.map(async (course) => {
+      const now = dayjs();
+
+      const status = now.isBefore(course.start_at)
+        ? "尚未開始"
+        : now.isAfter(course.end_at)
+          ? "已結束"
+          : "進行中";
+
+      const participants = await bookingRepository.count({
+        where: {
+          course_id: course.id,
+          cancelled_at: IsNull(),
+        },
+      });
+
+      return {
+        ...course,
+        status,
+        participants,
+      };
+    }),
+  );
 
   return response.status(200).json({
     status: "success",
-    data: courses,
+    data: coursesWithParticipants,
   });
 }
 
