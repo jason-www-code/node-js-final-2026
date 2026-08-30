@@ -1,4 +1,3 @@
-// utils/validUtils.js — 驗證工具函式
 const isValidString = (value) =>
   typeof value === "string" && value.trim() !== "";
 

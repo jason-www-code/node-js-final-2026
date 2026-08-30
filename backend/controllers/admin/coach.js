@@ -106,8 +106,6 @@ async function getCoach(request, response, next) {
     status: "success",
     data: {
       ...coach,
-
-      // sklii_link_coach
       skill_ids: coachBindingSkills,
     },
   });

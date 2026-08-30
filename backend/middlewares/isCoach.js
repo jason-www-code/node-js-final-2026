@@ -1,4 +1,3 @@
-// middlewares/isCoach.js
 const { errorHandler } = require("../utils/errorHandler");
 
 function isCoach(req, res, next) {
