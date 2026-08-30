@@ -1,5 +1,10 @@
 const dayjs = require("dayjs");
-const { In, IsNull } = require("typeorm");
+const { In, IsNull, Between } = require("typeorm");
+
+// 解析自訂時間格式
+const customParseFormat = require("dayjs/plugin/customParseFormat");
+
+dayjs.extend(customParseFormat);
 
 const { dataSource } = require("../../db/data-source");
 const { errorHandler } = require("../../utils/errorHandler");
@@ -11,6 +16,8 @@ const coachLinkSkillRepository = dataSource.getRepository("CoachLinkSkill");
 const skillRepository = dataSource.getRepository("Skills");
 const courseRepository = dataSource.getRepository("Course");
 const bookingRepository = dataSource.getRepository("CourseBooking");
+
+const creditPackageRepository = dataSource.getRepository("CreditPackage");
 
 async function upgradeToCoach(request, response, next) {
   const { userId } = request.params;
@@ -378,6 +385,96 @@ async function putCourseInfo(request, response, next) {
   });
 }
 
+async function getRevenue(request, response, next) {
+  const { month } = request.query;
+  const { id } = request.user;
+
+  const monthMap = [
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december",
+  ];
+
+  if (!isValidString(month) || !monthMap.includes(month))
+    return next(errorHandler(400, "欄位未填寫正確"));
+
+  // 月份首字轉大寫，符合 dayjs format 的格式，ex: 'may'->'May'
+  const capitalizaedMonth = month[0].toUpperCase() + month.slice(1);
+
+  // 取得當年、當月第一天
+  const startOfMonth = dayjs(capitalizaedMonth, "MMMM")
+    .startOf("month")
+    .format("YYYY-MM-DDTHH:mm:ss.SSSZ");
+
+  // 取得當年、當月最後一天
+  const endOfMonth = dayjs(capitalizaedMonth, "MMMM")
+    .endOf("month")
+    .format("YYYY-MM-DDTHH:mm:ss.SSSZ");
+
+  // 教練本人的課程，在該月之間，未取消報名筆數
+  const uncanceledBookings = await bookingRepository.count({
+    where: {
+      course: {
+        user_id: id,
+      },
+      created_at: Between(startOfMonth, endOfMonth),
+      cancelled_at: IsNull(),
+    },
+  });
+
+  // 單堂均價 = 全部購買方案的 Σprice ÷ Σcredit_amount（所有方案一起算，不是只算某一包）
+  const packages = await creditPackageRepository.find({});
+
+  const totalPrice = packages.reduce(
+    (acc, curr) => acc + Number(curr.price),
+    0,
+  );
+
+  const totalCreditAmount = packages.reduce(
+    (acc, curr) => acc + curr.credit_amount,
+    0,
+  );
+
+  const averagePrice = totalPrice / totalCreditAmount;
+
+  // 營收 revenue = floor(該月未取消報名筆數 × 單堂均價)——先乘再無條件捨去，不要先把均價捨去再乘。
+  const revenue = Math.floor(uncanceledBookings * averagePrice);
+
+  // 教練本人的課程，在該月不重複的報名學員數（同一人報多堂只算 1 人 AND 取消的報名不計入）
+  const participants = await bookingRepository.count({
+    // 處理不重複 ( COUNT(DISTINCT user_id) )
+    select: {
+      user_id: true,
+    },
+    where: {
+      course: {
+        user_id: id,
+      },
+      cancelled_at: IsNull(),
+    },
+  });
+
+  return response.status(200).json({
+    status: "success",
+    data: {
+      total: {
+        revenue,
+        participants,
+        course_count: uncanceledBookings,
+      },
+    },
+  });
+}
+
 module.exports = {
   upgradeToCoach,
   getCoach,
@@ -386,4 +483,5 @@ module.exports = {
   postCourse,
   getCourseInfo,
   putCourseInfo,
+  getRevenue,
 };

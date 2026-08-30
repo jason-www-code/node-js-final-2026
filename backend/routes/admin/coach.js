@@ -8,6 +8,7 @@ const {
   postCourse,
   getCourseInfo,
   putCourseInfo,
+  getRevenue
 } = require("../../controllers/admin/coach");
 const isAuth = require("../../middlewares/isAuth");
 const isCoach = require("../../middlewares/isCoach");
@@ -21,4 +22,5 @@ router.get("/courses/:courseId", isAuth, getCourseInfo);
 router.put("/courses/:courseId", isAuth, putCourseInfo);
 
 router.post("/:userId", upgradeToCoach);
+router.get("/revenue",isAuth,isCoach, getRevenue);
 module.exports = router;
