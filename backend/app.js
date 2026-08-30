@@ -24,8 +24,6 @@ app.use("/api/admin/coaches", coachRoute);
 app.use("/api/coaches", publicCoachRoute);
 app.use("/api/courses", courseRoute);
 
-//TODO : M3 M4 都加入 uuid 格式的驗證
-
 app.use((_, __, next) => next(errorHandler(404, "找不到無此路由 !!!")));
 
 app.use((error, _, response, next) => {

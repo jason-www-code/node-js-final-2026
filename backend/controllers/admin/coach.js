@@ -8,7 +8,11 @@ dayjs.extend(customParseFormat);
 
 const { dataSource } = require("../../db/data-source");
 const { errorHandler } = require("../../utils/errorHandler");
-const { isValidString, isInteger } = require("../../utils/validUtils");
+const {
+  isValidString,
+  isInteger,
+  isValidUUID,
+} = require("../../utils/validUtils");
 
 const userRepository = dataSource.getRepository("Users");
 const coachRepository = dataSource.getRepository("Coach");
@@ -24,6 +28,7 @@ async function upgradeToCoach(request, response, next) {
   const { experience_years, description, profile_image_url } = request.body;
 
   if (
+    !isValidUUID(userId) ||
     !isValidString(userId) ||
     !isInteger(experience_years) ||
     experience_years < 0 ||
@@ -266,6 +271,8 @@ async function postCourse(request, response, next) {
 async function getCourseInfo(request, response, next) {
   const { courseId } = request.params;
 
+  if (!isValidUUID(courseId)) return next(errorHandler(400, "欄位未填寫正確"));
+
   const existCourse = await courseRepository.findOne({
     select: {
       id: true,
@@ -305,6 +312,7 @@ async function getCourseInfo(request, response, next) {
 
 async function putCourseInfo(request, response, next) {
   const { courseId } = request.params;
+
   const {
     skill_id,
     name,
@@ -316,6 +324,7 @@ async function putCourseInfo(request, response, next) {
   } = request.body;
 
   if (
+    !isValidUUID(courseId) ||
     !isValidString(skill_id) ||
     !isValidString(name) ||
     !isValidString(description) ||
